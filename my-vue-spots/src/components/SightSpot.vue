@@ -235,14 +235,14 @@ export default {
 
 .events-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 25px;
-  padding: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 30px;
+  padding: 100px;
 }
 
 .event-card {
   background: white;
-  border-radius: 15px;
+  border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s, box-shadow 0.3s;
@@ -256,7 +256,7 @@ export default {
 
 .event-image {
   position: relative;
-  height: 200px;
+  height: 300px;
 }
 
 .event-image img {
@@ -267,13 +267,13 @@ export default {
 
 .event-date {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: rgba(52, 152, 219, 0.9);
+  top: 10px;
+  right: 10px;
+  background: rgba(52, 141, 219, 0.9);
   color: white;
   padding: 8px 15px;
-  border-radius: 20px;
-  font-size: 0.9em;
+  border-radius: 10px;
+  font-size: 0.5em;
 }
 
 .event-info {
@@ -282,9 +282,9 @@ export default {
 
 .event-info h3 {
   margin: 0 0 15px 0;
-  font-size: 1.2em;
+  font-size: 1.5em;
   color: #2c3e50;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .event-time,
@@ -292,10 +292,10 @@ export default {
 .event-organizer {
   color: #666;
   margin: 8px 0;
-  font-size: 0.9em;
+  font-size: 1.0em;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .modal {

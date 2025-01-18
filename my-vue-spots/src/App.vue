@@ -1,14 +1,22 @@
 <template>
-  <SightSpot />
+  <div class="app-container">
+    <Banner />
+    <SightSpot />
+    <Footer />
+  </div>
 </template>
 
 <script>
 import SightSpot from './components/SightSpot.vue'
+import Banner from './components/Banner.vue'
+import Footer from './components/Footer.vue'
 
 export default {
   name: 'App',
   components: {
-    SightSpot
+    SightSpot,
+    Banner,
+    Footer
   }
 }
 </script>
@@ -23,5 +31,11 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 </style>
