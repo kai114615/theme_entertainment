@@ -64,8 +64,8 @@ def get_events(request):
                     image_url as imageUrl,
                     related_link as url
                 FROM events
-                WHERE image_url IS NOT NULL AND image_url != ''
-                ORDER BY start_date DESC
+                # WHERE image_url IS NOT NULL AND image_url != ''
+                # ORDER BY start_date DESC
             """)
 
             # 獲取列名

@@ -57,7 +57,7 @@ def fetch_taipei_events():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = os.path.join(
             output_dir, f"市政網站整合平台之熱門活動_{timestamp}.json")
-        with open(output_file, "w", encoding="utf-8") as f:
+        with open(output_file, "w", encoding="utf-8-sig") as f:
             json.dump(events, f, ensure_ascii=False, indent=2)
 
         print(f"成功獲取 {len(events)} 筆活動資料")
@@ -100,6 +100,7 @@ def fetch_taipei_events():
                 continue
 
         return formatted_data
+        # return events
 
     except requests.exceptions.RequestException as e:
         print(f"獲取資料時發生錯誤: {e}")

@@ -172,12 +172,13 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
                 start_date = parse_date(event.get("startDate"))
                 end_date = parse_date(event.get("endDate"))
 
+                updates = []
+
                 if existing_event:
                     # 檢查是否需要更新
                     event_id, old_start_date, old_end_date, old_price, \
                         old_link, old_image, old_address = existing_event
 
-                    updates = []
                     values = []
 
                     # 檢查各欄位是否有更新
@@ -212,7 +213,7 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
                                          SET {', '.join(updates)}
                                          WHERE id = %s"""
                         cursor.execute(update_query, values)
-                        print(f"已更新 {len(updates)} 筆活動資訊")
+
                 else:
                     # 如果活動不存在，則新增
                     cursor.execute(
@@ -236,7 +237,6 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
                          event.get("imageUrl", ""))
                     )
                     event_id = cursor.lastrowid
-                    print(f"已新增活動: {event.get('title', '')}")
 
                 # 建立查詢結果和活動的關聯（先檢查是否已存在）
                 cursor.execute(
@@ -263,6 +263,7 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
                     )
 
         connection.commit()
+
     except Exception as e:
         connection.rollback()
         raise e

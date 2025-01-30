@@ -3,6 +3,9 @@ import json
 from datetime import datetime
 import os
 from typing import Optional
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
+import time
 
 
 def convert_date_format(date_str: str) -> str:
@@ -65,17 +68,59 @@ class CultureAPI:
             "category": "all"
         }
 
+        # 設定重試策略
+        retry_strategy = Retry(
+            total=3,  # 最多重試3次
+            backoff_factor=1,  # 重試間隔時間
+            status_forcelist=[500, 502, 503, 504]  # 需要重試的HTTP狀態碼
+        )
+
+        # 創建帶有重試機制的 session
+        self.session = requests.Session()
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
+    def make_request(self, url, params=None):
+        """發送請求並處理可能的錯誤"""
+        max_retries = 3
+        retry_delay = 5  # 秒
+        timeout = 30  # 秒
+
+        for attempt in range(max_retries):
+            try:
+                response = self.session.get(
+                    url,
+                    params=params,
+                    timeout=timeout,
+                    verify=True  # SSL 驗證
+                )
+                response.raise_for_status()
+                return response.json()
+
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    print(f"請求超時，{retry_delay}秒後進行第{attempt + 2}次嘗試...")
+                    time.sleep(retry_delay)
+                    continue
+                raise
+
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries - 1:
+                    print(f"請求失敗，{retry_delay}秒後進行第{
+                          attempt + 2}次嘗試... 錯誤: {e}")
+                    time.sleep(retry_delay)
+                    continue
+                raise
+
     def filter_event_data(self, event):
         # 提取 showInfo 中的資料
         show_info_list = []
         if 'showInfo' in event:
             for show in event['showInfo']:
                 # 檢查並安全地獲取時間資訊
-                time_info = show.get('time', {})
-                start_date = time_info.get('startDate', '') if isinstance(
-                    time_info, dict) else ''
-                end_date = time_info.get('endDate', '') if isinstance(
-                    time_info, dict) else ''
+                start_date = show.get('time', {})
+                end_date = show.get('endTime', {})
 
                 show_info = {
                     '活動起始日期': convert_date_format(start_date),
@@ -137,10 +182,7 @@ class CultureAPI:
     def get_events(self, category="all"):
         try:
             self.params["category"] = category
-            response = requests.get(self.base_url, params=self.params)
-            response.raise_for_status()
-
-            raw_data = response.json()
+            raw_data = self.make_request(self.base_url, self.params)
             filtered_data = [self.filter_event_data(
                 event) for event in raw_data]
 
@@ -202,7 +244,7 @@ class CultureAPI:
 
         except requests.exceptions.RequestException as e:
             print(f"獲取資料時發生錯誤：{str(e)}")
-            return {"result": []}
+            return {"result": [], "error": str(e)}
 
     def get_integrated_events(self):
         """獲取文化部整合綜藝活動資料（包含表演、美食、講座、旅遊等綜合類型之整合活動）"""
@@ -214,10 +256,7 @@ class CultureAPI:
             params = {
                 "method": "doFindFestivalTypeJ"
             }
-            response = requests.get(self.base_url, params=params)
-            response.raise_for_status()
-
-            raw_data = response.json()
+            raw_data = self.make_request(self.base_url, params)
             filtered_data = [self.filter_festival_data(
                 festival) for festival in raw_data]
 
@@ -269,14 +308,17 @@ class CultureAPI:
 
         except requests.exceptions.RequestException as e:
             print(f"獲取資料時發生錯誤：{str(e)}")
-            return {"result": []}
+            return {"result": [], "error": str(e)}
 
 
 if __name__ == "__main__":
     api = CultureAPI()
+
     # 獲取所有藝文活動
     all_events = api.get_events()
+
     # 獲取文化部整合綜藝活動
     integrated_events = api.get_integrated_events()
+
     # 獲取文化部節慶活動
     festival_events = api.get_festival_events()
