@@ -87,7 +87,8 @@ export default {
       events: [],
       isLoading: false,
       error: null,
-      fallbackImage: 'https://via.placeholder.com/400x300?text=活動圖片'
+      fallbackImage: 'https://via.placeholder.com/400x300?text=活動圖片',
+      selectedEvent: null
     }
   },
   async created() {

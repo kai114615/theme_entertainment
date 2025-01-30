@@ -9,9 +9,9 @@
                 <h3>快速連結</h3>
                 <ul>
                     <li><a href="#">首頁</a></li>
-                    <li><a href="#">熱門活動</a></li>
-                    <li><a href="#">最新消息</a></li>
+                    <li><a href="#">最新活動</a></li>
                     <li><a href="#">活動分類</a></li>
+                    <li><a href="#">聯絡我們</a></li>
                 </ul>
             </div>
             <div class="footer-section">
@@ -25,7 +25,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 主題趣樂 | 版權所有</p>
+            <p>&copy; 2025 主題趣樂 | 版權所有</p>
         </div>
     </footer>
 </template>
