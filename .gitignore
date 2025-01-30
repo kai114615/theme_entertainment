@@ -1,0 +1,64 @@
+# JSON 檔案
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!composer.json
+!manifest.json
+
+# 作業系統相關
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE 和編輯器
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 依賴包目錄
+node_modules/
+vendor/
+bower_components/
+
+# 編譯產生的檔案
+dist/
+build/
+*.class
+*.o
+*.pyc
+__pycache__/
+
+# 日誌檔案
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 環境設定檔
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# 暫存檔案
+tmp/
+temp/
+
+# 壓縮檔
+*.zip
+*.tar.gz
+*.rar
+
+# 資料庫檔案
+*.sqlite
+*.db
+
+# 憑證和金鑰
+*.pem
+*.key
+*.cert

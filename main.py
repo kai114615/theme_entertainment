@@ -212,7 +212,7 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
                                          SET {', '.join(updates)}
                                          WHERE id = %s"""
                         cursor.execute(update_query, values)
-                        # print(f"已更新活動資訊: {event.get('title', '')}")
+                        print(f"已更新 {len(updates)} 筆活動資訊")
                 else:
                     # 如果活動不存在，則新增
                     cursor.execute(
