@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 import csv
 import io
+import time
 
 
 def convert_date_format(date_str: str) -> str:
@@ -44,91 +45,113 @@ def convert_date_format(date_str: str) -> str:
 
 def fetch_newtaipei_events():
     """
-    從台北市政府開放資料平台獲取活動資訊
+    從新北市政府開放資料平台獲取活動資訊
     """
-    url = "https://data.ntpc.gov.tw/api/datasets/029e3fc2-1927-4534-8702-da7323be969b/csv/file"
+    url = "https://data.ntpc.gov.tw/api/datasets/029e3fc2-1927-4534-8702-da7323be969b/json"
 
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
+    # 設定請求參數
+    timeout = 30  # 設定30秒超時
+    max_retries = 3
+    retry_delay = 5  # 重試間隔5秒
 
-        # 使用 StringIO 來處理 CSV 內容
-        csv_content = io.StringIO(response.text)
-        csv_reader = csv.DictReader(csv_content)
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=timeout)
+            response.raise_for_status()
 
-        # 將 CSV 轉換為列表並重新映射欄位
-        events = []
-        for row in csv_reader:
-            event = {
-                "id": row.get("﻿\"id\"", "").strip('"'),  # 移除多餘的引號
-                "活動名稱": row.get("title", ""),
-                "活動起始日期": row.get("activeDate", ""),
-                "活動結束日期": row.get("activeEndDate", ""),
-                "簡介說明": row.get("description", ""),
-                "活動類別": row.get("className", ""),
-                "主辦單位": row.get("author", ""),
-                "活動場地": row.get("place", ""),
-                "場地電話": row.get("placeTel", ""),
-                "地址": row.get("address", ""),
-                "交通說明": row.get("traffic", ""),
-                "相關連結": row.get("aboutUrl", ""),
-                "圖片連結": row.get("picUrl", "")
+            try:
+                events = response.json()
+            except json.JSONDecodeError:
+                # 如果失敗，使用 utf-8-sig 重新解碼
+                content = response.content.decode('utf-8-sig')
+                events = json.loads(content)
+            # 將 JSON 資料轉換為標準格式
+            formatted_events = []
+            for event in events:
+                formatted_event = {
+                    "id": event.get("id", ""),
+                    "活動名稱": event.get("title", ""),
+                    "活動起始日期": event.get("activedate", ""),
+                    "活動結束日期": event.get("activeenddate", ""),
+                    "簡介說明": event.get("description", ""),
+                    "活動類別": event.get("classname", ""),
+                    "主辦單位": event.get("author", ""),
+                    "活動場地": event.get("place", ""),
+                    "場地電話": event.get("placeTel", ""),
+                    "地址": event.get("address", ""),
+                    "交通說明": event.get("traffic", ""),
+                    "相關連結": event.get("abouturl", ""),
+                    "圖片連結": event.get("picurl", "")
+                }
+                formatted_events.append(formatted_event)
+            events = formatted_events
+
+            # 建立固定名稱的輸出目錄
+            output_dir = "newtaipei_api"
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+
+            # 儲存完整資料（檔名包含時間戳記）
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_file = os.path.join(
+                output_dir, f"新北市政府近期活動_{timestamp}.json")
+            with open(output_file, "w", encoding="utf-8-sig") as f:
+                json.dump(events, f, ensure_ascii=False, indent=2)
+
+            print(f"成功獲取 {len(events)} 筆活動資料")
+            print(f"資料已儲存至: {output_file}")
+
+            # 將資料轉換為標準格式
+            formatted_data = {
+                "result": [],
+                "queryTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total": len(events),
+                "limit": len(events),
+                "offset": 0
             }
-            events.append(event)
 
-        # 建立固定名稱的輸出目錄
-        output_dir = "newtaipei_api"
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+            for event in events:
+                formatted_event = {
+                    "uid": event["id"],
+                    "title": event["活動名稱"],
+                    "description": event["簡介說明"],
+                    "organizer": event["主辦單位"],
+                    "address": event["地址"],
+                    "startDate": convert_date_format(event["活動起始日期"]),
+                    "endDate": convert_date_format(event["活動結束日期"]),
+                    "location": event["活動場地"],
+                    "latitude": None,  # 新北市的資料沒有經緯度資訊
+                    "longitude": None,
+                    "price": "",  # 新北市的資料沒有價格資訊
+                    "url": event["相關連結"],
+                    "imageUrl": event["圖片連結"]
+                }
+                formatted_data["result"].append(formatted_event)
 
-        # 儲存完整資料（檔名包含時間戳記）
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(
-            output_dir, f"新北市政府近期活動_{timestamp}.json")
-        with open(output_file, "w", encoding="utf-8-sig") as f:
-            json.dump(events, f, ensure_ascii=False, indent=2)
+            return formatted_data
 
-        print(f"成功獲取 {len(events)} 筆活動資料")
-        print(f"資料已儲存至: {output_file}")
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                print(f"請求超時，{retry_delay}秒後進行第{attempt + 2}次嘗試...")
+                time.sleep(retry_delay)
+                continue
+            print(f"請求超時，已重試{max_retries}次仍然失敗")
+            return {"result": [], "error": "請求超時"}
 
-        # 將資料轉換為標準格式
-        formatted_data = {
-            "result": [],
-            "queryTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "total": len(events),
-            "limit": len(events),
-            "offset": 0
-        }
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                print(f"請求失敗，{retry_delay}秒後進行第{attempt + 2}次嘗試... 錯誤: {e}")
+                time.sleep(retry_delay)
+                continue
+            print(f"獲取資料失敗，已重試{max_retries}次: {e}")
+            return {"result": [], "error": str(e)}
 
-        for event in events:
-            formatted_event = {
-                "uid": event["id"],
-                "title": event["活動名稱"],
-                "description": event["簡介說明"],
-                "organizer": event["主辦單位"],
-                "address": event["地址"],
-                "startDate": convert_date_format(event["活動起始日期"]),
-                "endDate": convert_date_format(event["活動結束日期"]),
-                "location": event["活動場地"],
-                "latitude": None,  # 新北市的資料沒有經緯度資訊
-                "longitude": None,
-                "price": "",  # 新北市的資料沒有價格資訊
-                "url": event["相關連結"],
-                "imageUrl": event["圖片連結"]
-            }
-            formatted_data["result"].append(formatted_event)
+        except Exception as e:
+            print(f"發生未預期的錯誤: {e}")
+            return {"result": [], "error": str(e)}
 
-        return formatted_data
-
-    except requests.exceptions.RequestException as e:
-        print(f"獲取資料時發生錯誤: {e}")
-        return {"result": []}
-    except csv.Error as e:
-        print(f"處理 CSV 資料時發生錯誤: {e}")
-        return {"result": []}
-    except Exception as e:
-        print(f"發生未預期的錯誤: {e}")
-        return {"result": []}
+        # 如果成功獲取數據，跳出重試循環
+        break
 
 
 if __name__ == "__main__":

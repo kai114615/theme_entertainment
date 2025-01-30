@@ -129,7 +129,7 @@ def parse_date(date_str: str) -> str:
 
 
 def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.MySQLConnection) -> None:
-    """將資料儲存到MySQL資料庫，只新增不重複的資料"""
+    """將資料儲存到MySQL資料庫，檢查並更新已存在的資料"""
     if not data:
         return
 
@@ -161,22 +161,65 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
             for idx, event in enumerate(data["result"]):
                 # 檢查是否已存在相同的活動
                 cursor.execute(
-                    "SELECT id FROM events WHERE uid = %s",
+                    """SELECT id, start_date, end_date, ticket_price,
+                              related_link, image_url, address
+                       FROM events WHERE uid = %s""",
                     (event.get("uid", ""),)
                 )
                 existing_event = cursor.fetchone()
 
-                if not existing_event:
-                    # 處理日期格式
-                    start_date = parse_date(event.get("startDate"))
-                    end_date = parse_date(event.get("endDate"))
+                # 處理日期格式
+                start_date = parse_date(event.get("startDate"))
+                end_date = parse_date(event.get("endDate"))
 
+                if existing_event:
+                    # 檢查是否需要更新
+                    event_id, old_start_date, old_end_date, old_price, \
+                        old_link, old_image, old_address = existing_event
+
+                    updates = []
+                    values = []
+
+                    # 檢查各欄位是否有更新
+                    if start_date and start_date != old_start_date:
+                        updates.append("start_date = %s")
+                        values.append(start_date)
+
+                    if end_date and end_date != old_end_date:
+                        updates.append("end_date = %s")
+                        values.append(end_date)
+
+                    if event.get("price") and event.get("price") != old_price:
+                        updates.append("ticket_price = %s")
+                        values.append(event.get("price"))
+
+                    if event.get("url") and event.get("url") != old_link:
+                        updates.append("related_link = %s")
+                        values.append(event.get("url"))
+
+                    if event.get("imageUrl") and event.get("imageUrl") != old_image:
+                        updates.append("image_url = %s")
+                        values.append(event.get("imageUrl"))
+
+                    if event.get("address") and event.get("address") != old_address:
+                        updates.append("address = %s")
+                        values.append(event.get("address"))
+
+                    # 如果有需要更新的欄位
+                    if updates:
+                        values.append(event_id)
+                        update_query = f"""UPDATE events
+                                         SET {', '.join(updates)}
+                                         WHERE id = %s"""
+                        cursor.execute(update_query, values)
+                        # print(f"已更新活動資訊: {event.get('title', '')}")
+                else:
                     # 如果活動不存在，則新增
                     cursor.execute(
                         """INSERT INTO events
                         (uid, activity_name, description, organizer, address,
-                            start_date, end_date, location, latitude, longitude,
-                            ticket_price, related_link, image_url)
+                         start_date, end_date, location, latitude, longitude,
+                         ticket_price, related_link, image_url)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                         (event.get("uid", ""),
                          event.get("title", ""),
@@ -193,11 +236,30 @@ def save_to_mysql(data: Dict[str, Any], connection: mysql.connector.connection.M
                          event.get("imageUrl", ""))
                     )
                     event_id = cursor.lastrowid
+                    print(f"已新增活動: {event.get('title', '')}")
 
-                    # 建立查詢結果和活動的關聯
+                # 建立查詢結果和活動的關聯（先檢查是否已存在）
+                cursor.execute(
+                    """SELECT query_id, event_id FROM query_event_relations
+                       WHERE query_id = %s AND event_id = %s""",
+                    (query_id, event_id)
+                )
+                existing_relation = cursor.fetchone()
+
+                if not existing_relation:
                     cursor.execute(
-                        "INSERT INTO query_event_relations (query_id, event_id, display_order) VALUES (%s, %s, %s)",
+                        """INSERT INTO query_event_relations
+                           (query_id, event_id, display_order)
+                           VALUES (%s, %s, %s)""",
                         (query_id, event_id, idx + 1)
+                    )
+                else:
+                    # 如果關聯已存在，更新 display_order
+                    cursor.execute(
+                        """UPDATE query_event_relations
+                           SET display_order = %s
+                           WHERE query_id = %s AND event_id = %s""",
+                        (idx + 1, query_id, event_id)
                     )
 
         connection.commit()
