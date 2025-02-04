@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # 'corsheaders',
     # 'rest_framework',
     'theme_entertainment',
+    'theme_entertainment.apps.ThemeEntertainmentConfig',
 ]
 
 MIDDLEWARE = [

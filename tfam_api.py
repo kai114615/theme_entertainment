@@ -3,6 +3,8 @@ import json
 import os
 from typing import Dict, Optional
 from datetime import datetime
+import socket
+import time
 
 
 def convert_date_format(date_str: Optional[str]) -> Optional[str]:
@@ -43,9 +45,14 @@ def convert_date_format(date_str: Optional[str]) -> Optional[str]:
 
 class TaipeiOpenDataAPI:
     def __init__(self, dataset_id: str = "fef040da-75d3-42bc-98dd-a292919a251a"):
-        self.base_url = f"https://data.taipei/api/v1/dataset/{dataset_id}"
+        # 主要和備用 API URL
+        self.primary_base_url = f"https://data.taipei/api/v1/dataset/{
+            dataset_id}"
+        self.backup_base_url = f"https://www.data.taipei/api/v1/dataset/{
+            dataset_id}"
         self.dataset_id = dataset_id
         self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'accept': 'application/json',
             'Content-Type': 'application/json',
         }
@@ -56,110 +63,127 @@ class TaipeiOpenDataAPI:
                    offset: Optional[int] = None) -> Dict:
         """
         從台北市資料開放平台獲取資料
-
-        Args:
-            q (str, optional): 關鍵字查詢
-            limit (int, optional): 筆數上限(1000)
-            offset (int, optional): 位移筆數
-
-        Returns:
-            Dict: API回傳的資料
         """
+        urls = [self.primary_base_url, self.backup_base_url]
+        max_retries = 3
+
+        for url in urls:
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    # 設定 DNS 超時
+                    socket.setdefaulttimeout(10)
+
+                    params = {
+                        "scope": "resourceAquire",
+                        "resource_id": self.dataset_id
+                    }
+
+                    # 加入可選參數
+                    if q is not None:
+                        params['q'] = q
+                    if limit is not None:
+                        params['limit'] = min(limit, 1000)
+                    if offset is not None:
+                        params['offset'] = offset
+
+                    # 發送請求
+                    response = requests.get(
+                        url,
+                        params=params,
+                        headers=self.headers,
+                        timeout=30,  # 設定 30 秒超時
+                        verify=True
+                    )
+
+                    if response.status_code != 200:
+                        print(f"錯誤回應內容: {response.text}")
+                        response.raise_for_status()
+
+                    raw_data = response.json()
+
+                    # 成功獲取資料，進行處理
+                    formatted_data = self._format_response_data(raw_data)
+                    if formatted_data:
+                        self.save_to_json(raw_data)
+                        return formatted_data
+
+                except (requests.exceptions.RequestException,
+                        json.JSONDecodeError,
+                        socket.timeout) as e:
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        print(f"在 {max_retries} 次嘗試後仍無法訪問 {url}: {str(e)}")
+                        break  # 嘗試下一個 URL
+                    print(f"第 {retry_count} 次嘗試失敗，等待重試...")
+                    time.sleep(2)  # 等待 2 秒後重試
+                except Exception as e:
+                    print(f"發生未預期的錯誤: {str(e)}")
+                    break  # 嘗試下一個 URL
+
+        print("所有 API 端點都無法訪問")
+        return {"result": []}
+
+    def _format_response_data(self, raw_data: Dict) -> Dict:
+        """格式化 API 回應資料"""
         try:
-            params = {
-                "scope": "resourceAquire",
-                "resource_id": self.dataset_id
-            }
-
-            # 加入可選參數
-            if q is not None:
-                params['q'] = q
-            if limit is not None:
-                params['limit'] = min(limit, 1000)  # 確保不超過1000筆
-            if offset is not None:
-                params['offset'] = offset
-
-            response = requests.get(
-                self.base_url,
-                params=params,
-                headers=self.headers
-            )
-
-            if response.status_code != 200:
-                print(f"錯誤回應內容: {response.text}")
-                response.raise_for_status()
-
-            raw_data = response.json()
-
-            # 將資料轉換為標準格式
             formatted_data = {
                 "result": [],
                 "queryTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "total": raw_data.get("result", {}).get("total", 0),
-                "limit": limit if limit is not None else raw_data.get("result", {}).get("limit", 0),
-                "offset": offset if offset is not None else raw_data.get("result", {}).get("offset", 0)
+                "limit": raw_data.get("result", {}).get("limit", 0),
+                "offset": raw_data.get("result", {}).get("offset", 0)
             }
 
-            # 處理活動資料
             if "result" in raw_data and "results" in raw_data["result"]:
                 for item in raw_data["result"]["results"]:
-                    # 根據不同的 dataset_id 處理不同的資料格式
-                    if self.dataset_id == "1700a7e6-3d27-47f9-89d9-1811c9f7489c":
-                        # 展覽資訊
-                        formatted_event = {
-                            "uid": item.get("_id", ""),
-                            "title": item.get("title", ""),
-                            "description": item.get("內容", ""),
-                            "organizer": "臺北市立美術館",
-                            "address": "臺北市中山區中山北路三段181號",
-                            "startDate": convert_date_format(item.get("startDate")),
-                            "endDate": convert_date_format(item.get("endDate")),
-                            "location": "臺北市立美術館",
-                            "latitude": 25.072943,
-                            "longitude": 121.524536,
-                            "price": item.get("price", ""),
-                            "url": item.get("url", ""),
-                            "imageUrl": item.get("imageUrl", "")
-                        }
-                    else:
-                        # 活動資訊
-                        formatted_event = {
-                            "uid": item.get("_id", ""),
-                            "title": item.get("title", ""),
-                            "description": item.get("內容", ""),
-                            "organizer": "臺北市立美術館",
-                            "address": "臺北市中山區中山北路三段181號",
-                            "startDate": convert_date_format(item.get("startDate")),
-                            "endDate": convert_date_format(item.get("endDate")),
-                            "location": "臺北市立美術館",
-                            "latitude": 25.072943,
-                            "longitude": 121.524536,
-                            "price": item.get("price", ""),
-                            "url": item.get("url", ""),
-                            "imageUrl": item.get("imageUrl", "")
-                        }
-                    formatted_data["result"].append(formatted_event)
-
-                # 新增：顯示成功獲取的資料筆數
-                print(f"\n成功獲取 {len(formatted_data['result'])} 筆活動資料")
-
-            # 儲存原始資料
-            self.save_to_json(raw_data)
+                    formatted_event = self._format_event(item)
+                    if formatted_event:
+                        formatted_data["result"].append(formatted_event)
 
             return formatted_data
-
-        except requests.exceptions.RequestException as e:
-            print(f"發生錯誤: {str(e)}")
-            if hasattr(e, 'response') and hasattr(e.response, 'text'):
-                print(f"錯誤詳細資訊: {e.response.text}")
-            return {"result": []}
-        except json.JSONDecodeError as e:
-            print(f"JSON 解析錯誤: {str(e)}")
-            print(f"原始回應內容: {response.text}")
-            return {"result": []}
         except Exception as e:
-            print(f"發生未預期的錯誤: {str(e)}")
-            return {"result": []}
+            print(f"格式化資料時發生錯誤: {str(e)}")
+            return None
+
+    def _format_event(self, item: Dict) -> Dict:
+        """格式化單個活動資料"""
+        try:
+            if self.dataset_id == "1700a7e6-3d27-47f9-89d9-1811c9f7489c":
+                return {
+                    "uid": item.get("_id", ""),
+                    "title": item.get("title", ""),
+                    "description": item.get("內容", ""),
+                    "organizer": "臺北市立美術館",
+                    "address": "臺北市中山區中山北路三段181號",
+                    "startDate": convert_date_format(item.get("startDate")),
+                    "endDate": convert_date_format(item.get("endDate")),
+                    "location": "臺北市立美術館",
+                    "latitude": 25.072943,
+                    "longitude": 121.524536,
+                    "price": item.get("price", ""),
+                    "url": item.get("url", ""),
+                    "imageUrl": item.get("imageUrl", "")
+                }
+            else:
+                return {
+                    "uid": item.get("_id", ""),
+                    "title": item.get("title", ""),
+                    "description": item.get("內容", ""),
+                    "organizer": "臺北市立美術館",
+                    "address": "臺北市中山區中山北路三段181號",
+                    "startDate": convert_date_format(item.get("startDate")),
+                    "endDate": convert_date_format(item.get("endDate")),
+                    "location": "臺北市立美術館",
+                    "latitude": 25.072943,
+                    "longitude": 121.524536,
+                    "price": item.get("price", ""),
+                    "url": item.get("url", ""),
+                    "imageUrl": item.get("imageUrl", "")
+                }
+        except Exception as e:
+            print(f"格式化活動資料時發生錯誤: {str(e)}")
+            return None
 
     def save_to_json(self, data: Dict, filename: Optional[str] = None, output_dir: str = 'tfam_api') -> str:
         """

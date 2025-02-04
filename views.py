@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.db import connection
+from django.db.models import F
+from theme_entertainment.models import Events
 
 
 def theme_list(request):
@@ -17,64 +19,40 @@ def activity_management(request):
 
 def get_event_detail(request, event_id):
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                    uid,
-                    activity_name as title,
-                    description,
-                    organizer,
-                    location,
-                    start_date as startDate,
-                    end_date as endDate,
-                    address,
-                    image_url as imageUrl,
-                    related_link as url
-                FROM events
-                WHERE uid = %s
-            """, [event_id])
+        event = Events.objects.filter(uid=event_id).values(
+            'uid',
+            'description',
+            'organizer',
+            'location',
+            'address',
+            title=F('activity_name'),
+            startDate=F('start_date'),
+            endDate=F('end_date'),
+            imageUrl=F('image_url'),
+            url=F('related_link')
+        ).first()
 
-            columns = [col[0] for col in cursor.description]
-            row = cursor.fetchone()
-
-            if row:
-                event = dict(zip(columns, row))
-                return JsonResponse(event)
-            else:
-                return JsonResponse({'error': '找不到該活動'}, status=404)
-
+        if event:
+            return JsonResponse(event)
+        return JsonResponse({'error': '找不到該活動'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
 
 def get_events(request):
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                    uid,
-                    activity_name as title,
-                    description,
-                    organizer,
-                    location,
-                    start_date as startDate,
-                    end_date as endDate,
-                    address,
-                    image_url as imageUrl,
-                    related_link as url
-                FROM events
-            """)
-
-            columns = [col[0] for col in cursor.description]
-            events = [
-                dict(zip(columns, row))
-                for row in cursor.fetchall()
-            ]
-
-            return JsonResponse(events, safe=False)
-
-    except Exception as e:
-        return JsonResponse(
-            {'error': str(e)},
-            status=500
+        events = Events.objects.all().values(
+            'uid',
+            'description',
+            'organizer',
+            'location',
+            'address',
+            title=F('activity_name'),
+            startDate=F('start_date'),
+            endDate=F('end_date'),
+            imageUrl=F('image_url'),
+            url=F('related_link')
         )
+        return JsonResponse(list(events), safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
