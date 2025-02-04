@@ -42,3 +42,18 @@ CREATE TABLE IF NOT EXISTS query_event_relations (
     FOREIGN KEY (query_id) REFERENCES query_results(id),
     FOREIGN KEY (event_id) REFERENCES events(id)
 );
+-- 創建娛樂資訊表（如果不存在）
+CREATE TABLE IF NOT EXISTS entertainment (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    location VARCHAR(255) NULL,
+    start_date DATE NULL,
+    end_date DATE NULL,
+    organizer VARCHAR(255) NULL,
+    website VARCHAR(255) NULL,
+    image_url VARCHAR(255) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    source VARCHAR(50) NULL
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
