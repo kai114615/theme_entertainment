@@ -66,3 +66,24 @@ class TFAMEvent(BaseEvent):
     class Meta:
         verbose_name = '北美館展覽'
         verbose_name_plural = '北美館展覽'
+
+
+class Event(models.Model):
+    uid = models.CharField(max_length=100, primary_key=True)
+    activity_name = models.CharField(max_length=200)
+    description = models.TextField(null=True, blank=True)
+    organizer = models.CharField(max_length=100)
+    location = models.CharField(max_length=200)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    address = models.CharField(max_length=200)
+    image_url = models.URLField(null=True, blank=True)
+    related_link = models.URLField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'events'
+        verbose_name = '活動'
+        verbose_name_plural = '活動列表'
+
+    def __str__(self):
+        return self.activity_name
