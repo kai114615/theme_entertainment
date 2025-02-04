@@ -47,7 +47,7 @@ def fetch_newtaipei_events():
     """
     從新北市政府開放資料平台獲取活動資訊
     """
-    url = "https://data.ntpc.gov.tw/api/datasets/029e3fc2-1927-4534-8702-da7323be969b/json"
+    url = "https://data.ntpc.gov.tw/api/datasets/029e3fc2-1927-4534-8702-da7323be969b/csv"
 
     # 設定請求參數
     timeout = 30  # 設定30秒超時
@@ -60,12 +60,37 @@ def fetch_newtaipei_events():
             response.raise_for_status()
 
             try:
+                # 先嘗試解析為 JSON
                 events = response.json()
             except json.JSONDecodeError:
-                # 如果失敗，使用 utf-8-sig 重新解碼
-                content = response.content.decode('utf-8-sig')
-                events = json.loads(content)
-            # 將 JSON 資料轉換為標準格式
+                try:
+                    # JSON 解析失敗，嘗試解析 CSV
+                    csv_content = io.StringIO(
+                        response.content.decode('utf-8-sig'))
+                    csv_reader = csv.DictReader(csv_content)
+                    events = []
+                    for row in csv_reader:
+                        event = {
+                            "id": row.get("id", ""),
+                            "title": row.get("title", ""),
+                            "activedate": row.get("activedate", ""),
+                            "activeenddate": row.get("activeenddate", ""),
+                            "description": row.get("description", ""),
+                            "classname": row.get("classname", ""),
+                            "author": row.get("author", ""),
+                            "place": row.get("place", ""),
+                            "placeTel": row.get("placeTel", ""),
+                            "address": row.get("address", ""),
+                            "traffic": row.get("traffic", ""),
+                            "abouturl": row.get("abouturl", ""),
+                            "picurl": row.get("picurl", "")
+                        }
+                        events.append(event)
+                except (csv.Error, UnicodeDecodeError) as e:
+                    print(f"CSV 解析錯誤: {e}")
+                    raise
+
+            # 將資料轉換為標準格式
             formatted_events = []
             for event in events:
                 formatted_event = {

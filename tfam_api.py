@@ -140,6 +140,9 @@ class TaipeiOpenDataAPI:
                         }
                     formatted_data["result"].append(formatted_event)
 
+                # 新增：顯示成功獲取的資料筆數
+                print(f"\n成功獲取 {len(formatted_data['result'])} 筆活動資料")
+
             # 儲存原始資料
             self.save_to_json(raw_data)
 

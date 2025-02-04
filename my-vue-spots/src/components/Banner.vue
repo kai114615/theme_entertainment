@@ -8,10 +8,10 @@
                 <span class="logo-text">主題趣樂</span>
             </div>
             <nav class="nav-section">
-                <a href="#" class="nav-link active">首頁</a>
-                <a href="http://localhost:8000/create.html" class="nav-link">最新活動</a>
-                <a href="http://localhost:8000/activity_management.html" class="nav-link">網站導覽</a>
-                <a href="http://localhost:8000/list.html" class="nav-link">聯絡我們</a>
+                <a href="http://localhost:5173/" class="nav-link active">首頁</a>
+                <a href="http://localhost:8000/create/" class="nav-link">最新活動</a>
+                <a href="http://localhost:8000/activity_management/" class="nav-link">網站導覽</a>
+                <a href="http://localhost:8000/list/" class="nav-link">聯絡我們</a>
                 <a href="#" class="nav-link login-btn">
                     <i class="fas fa-user"></i> 登入會員
                 </a>

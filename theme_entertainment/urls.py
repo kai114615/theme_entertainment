@@ -19,10 +19,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('list.html', views.theme_list, name='theme_list'),
-    path('create.html', views.theme_create, name='theme_create'),
-    path('activity_management.html', views.activity_management,
+    # path('admin/', admin.site.urls),
+    path('list/', views.theme_list, name='theme_list'),
+    path('create/', views.theme_create, name='theme_create'),
+    path('activity_management/', views.activity_management,
          name='activity_management'),
     path('api/events/', views.get_events, name='get_events'),
     # path('api/events/<str:event_id>/',

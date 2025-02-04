@@ -8,10 +8,10 @@
             <div class="footer-section">
                 <h3>快速連結</h3>
                 <ul>
-                    <li><a href="#">首頁</a></li>
-                    <li><a href="#">最新活動</a></li>
-                    <li><a href="#">活動分類</a></li>
-                    <li><a href="#">聯絡我們</a></li>
+                    <li><a href="http://localhost:5173/">首頁</a></li>
+                    <li><a href="http://localhost:8000/create/">最新活動</a></li>
+                    <li><a href="http://localhost:8000/activity_management/">網站導覽</a></li>
+                    <li><a href="http://localhost:8000/list/">聯絡我們</a></li>
                 </ul>
             </div>
             <div class="footer-section">
